@@ -1,18 +1,32 @@
+using Contoso.InventoryFunctions.Contracts;
+using Contoso.InventoryFunctions.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Contoso.InventoryFunctions;
+namespace Contoso.InventoryFunctions.Functions;
 
 public sealed class ReserveInventory
 {
-    private const int AvailableInventory = 20;
-
+    private readonly IInventoryService _inventoryService;
     private readonly ILogger<ReserveInventory> _logger;
 
+    public ReserveInventory(
+        IInventoryService inventoryService,
+        ILogger<ReserveInventory> logger)
+    {
+        _inventoryService = inventoryService;
+        _logger = logger;
+    }
+
+    // Back-compat constructor used by unit tests that only provide a logger.
+    // Creates a default in-memory implementation so tests can instantiate the
+    // function without wiring DI.
     public ReserveInventory(ILogger<ReserveInventory> logger)
     {
+        _inventoryService = new InMemoryInventoryService(new NullLogger<InMemoryInventoryService>());
         _logger = logger;
     }
 
@@ -37,18 +51,18 @@ public sealed class ReserveInventory
         {
             _logger.LogWarning(
                 exception,
-                "The inventory reservation request contained invalid JSON.");
+                "Inventory reservation request contained invalid JSON.");
 
             return new BadRequestObjectResult(new ErrorResponse(
-                "INVALID_REQUEST",
-                "The request body must contain valid JSON."));
+                ErrorCode: "INVALID_REQUEST",
+                Message: "The request body must contain valid JSON."));
         }
 
         if (reservationRequest is null)
         {
             return new BadRequestObjectResult(new ErrorResponse(
-                "INVALID_REQUEST",
-                "A request body is required."));
+                ErrorCode: "MISSING_BODY",
+                Message: "A request body is required."));
         }
 
         if (string.IsNullOrWhiteSpace(reservationRequest.OrderId) ||
@@ -56,61 +70,18 @@ public sealed class ReserveInventory
             reservationRequest.Quantity <= 0)
         {
             return new BadRequestObjectResult(new ErrorResponse(
-                "INVALID_REQUEST",
-                "OrderId, ProductId, and a positive Quantity are required."));
+                ErrorCode: "INVALID_REQUEST",
+                Message: "OrderId, ProductId, and a positive Quantity are required."));
         }
 
-        _logger.LogInformation(
-            "Attempting to reserve {Quantity} units of product {ProductId} " +
-            "for order {OrderId}.",
-            reservationRequest.Quantity,
-            reservationRequest.ProductId,
-            reservationRequest.OrderId);
+        var result = await _inventoryService.ReserveAsync(
+            reservationRequest,
+            cancellationToken);
 
-        if (reservationRequest.Quantity > AvailableInventory)
-        {
-            _logger.LogWarning(
-                "Inventory reservation rejected for order {OrderId}. " +
-                "Requested {RequestedQuantity}; available {AvailableQuantity}.",
-                reservationRequest.OrderId,
-                reservationRequest.Quantity,
-                AvailableInventory);
-
-            return new ConflictObjectResult(new ErrorResponse(
-                "OUT_OF_STOCK",
-                "There is not enough inventory to complete the reservation."));
-        }
-
-        var response = new ReserveInventoryResponse(
-            Success: true,
-            ReservationId: $"RES-{Guid.NewGuid():N}",
-            OrderId: reservationRequest.OrderId,
-            ProductId: reservationRequest.ProductId,
-            QuantityReserved: reservationRequest.Quantity,
-            RemainingInventory: AvailableInventory - reservationRequest.Quantity);
-
-        _logger.LogInformation(
-            "Inventory reservation {ReservationId} created for order {OrderId}.",
-            response.ReservationId,
-            response.OrderId);
-
-        return new OkObjectResult(response);
+        return result.Success
+            ? new OkObjectResult(result)
+            : new ConflictObjectResult(new ErrorResponse(
+                ErrorCode: result.ErrorCode ?? "OUT_OF_STOCK",
+                Message: result.Message ?? "There is not enough inventory to complete the reservation."));
     }
 }
-
-public sealed record ReserveInventoryRequest(
-    string OrderId,
-    string ProductId,
-    int Quantity);
-
-public sealed record ReserveInventoryResponse(
-    bool Success,
-    string ReservationId,
-    string OrderId,
-    string ProductId,
-    int QuantityReserved,
-    int RemainingInventory);
-
-public sealed record ErrorResponse(
-    string ErrorCode,
-    string Message);
