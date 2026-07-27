@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Contoso.InventoryFunctions.Functions;
 
@@ -17,6 +18,15 @@ public sealed class ReserveInventory
         ILogger<ReserveInventory> logger)
     {
         _inventoryService = inventoryService;
+        _logger = logger;
+    }
+
+    // Back-compat constructor used by unit tests that only provide a logger.
+    // Creates a default in-memory implementation so tests can instantiate the
+    // function without wiring DI.
+    public ReserveInventory(ILogger<ReserveInventory> logger)
+    {
+        _inventoryService = new InMemoryInventoryService(new NullLogger<InMemoryInventoryService>());
         _logger = logger;
     }
 
