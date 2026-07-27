@@ -54,7 +54,7 @@ public sealed class ReserveInventory
                 "Inventory reservation request contained invalid JSON.");
 
             return new BadRequestObjectResult(new ErrorResponse(
-                ErrorCode: "INVALID_JSON",
+                ErrorCode: "INVALID_REQUEST",
                 Message: "The request body must contain valid JSON."));
         }
 
@@ -69,11 +69,9 @@ public sealed class ReserveInventory
             string.IsNullOrWhiteSpace(reservationRequest.ProductId) ||
             reservationRequest.Quantity <= 0)
         {
-            return new BadRequestObjectResult(new
-            {
-                errorCode = "INVALID_REQUEST",
-                message = "OrderId, ProductId, and a positive Quantity are required."
-            });
+            return new BadRequestObjectResult(new ErrorResponse(
+                ErrorCode: "INVALID_REQUEST",
+                Message: "OrderId, ProductId, and a positive Quantity are required."));
         }
 
         var result = await _inventoryService.ReserveAsync(
