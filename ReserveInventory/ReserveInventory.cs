@@ -14,7 +14,7 @@ public class ReserveInventory
         _logger = logger;
     }
 
-    [Function("Function1")]
+    [Function("ReserveInventory")]
     public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequest req)
     {
         _logger.LogInformation("C# HTTP trigger function processed a request.");
