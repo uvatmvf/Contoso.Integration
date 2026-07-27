@@ -1,4 +1,5 @@
 using Azure.Monitor.OpenTelemetry.Exporter;
+using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Azure.Functions.Worker.OpenTelemetry;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using OpenTelemetry;
 
 var builder = FunctionsApplication.CreateBuilder(args);
+builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 
 builder.ConfigureFunctionsWebApplication();
 

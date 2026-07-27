@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReserveInventory\ReserveInventory.csproj" />
+    <ProjectReference Include="..\ReserveInventory\Contoso.InventoryFunctions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

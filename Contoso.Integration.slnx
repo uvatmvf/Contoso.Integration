@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/docs/" />
   <Folder Name="/src/">
-    <Project Path="ReserveInventory/ReserveInventory.csproj" />
+    <Project Path="ReserveInventory/Contoso.InventoryFunctions.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="ReserveInventory.NUnitTest/ReserveInventory.NUnitTest.csproj" />
