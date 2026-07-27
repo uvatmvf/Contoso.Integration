@@ -7,4 +7,8 @@ public interface IInventoryService
     Task<ReserveInventoryResponse> ReserveAsync(
         ReserveInventoryRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ReleaseInventoryResponse> ReleaseAsync(
+        ReleaseInventoryRequest request,
+        CancellationToken cancellationToken = default);
 }

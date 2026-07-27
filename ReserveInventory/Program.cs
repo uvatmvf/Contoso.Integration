@@ -9,6 +9,8 @@ using OpenTelemetry;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
+builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
+builder.Services.AddSingleton<IPaymentService, SimulatedPaymentService>();
 
 builder.ConfigureFunctionsWebApplication();
 
