@@ -3,5 +3,7 @@
   <Folder Name="/src/">
     <Project Path="ReserveInventory/ReserveInventory.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="ReserveInventory.NUnitTest/ReserveInventory.NUnitTest.csproj" />
+  </Folder>
 </Solution>

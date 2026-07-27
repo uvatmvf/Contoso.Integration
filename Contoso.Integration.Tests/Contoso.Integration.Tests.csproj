@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+	<TargetFramework>net10.0</TargetFramework>
+	<IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.0" />
+	<PackageReference Include="xunit" Version="2.6.2" />
+	<PackageReference Include="xunit.runner.visualstudio" Version="2.6.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\Contoso.Integration\Contoso.Integration\Contoso.InventoryFunctions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+	<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+  </ItemGroup>
+</Project>
