@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
-namespace Contoso.Integration
+namespace Contoso.InventoryFunctions.src.Contoso.InventoryFunctions
 {
     public static class Function1
     {

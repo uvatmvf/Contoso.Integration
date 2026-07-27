@@ -1,3 +1,7 @@
 <Solution>
-  <Project Path="Contoso.Integration/Contoso.InventoryFunctions.csproj" />
+  <Folder Name="/docs/" />
+  <Folder Name="/src/">
+    <Project Path="Contoso.Integration/Contoso.InventoryFunctions.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
 </Solution>
