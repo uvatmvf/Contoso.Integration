@@ -53,20 +53,16 @@ public sealed class ReserveInventory
                 exception,
                 "Inventory reservation request contained invalid JSON.");
 
-            return new BadRequestObjectResult(new
-            {
-                errorCode = "INVALID_JSON",
-                message = "The request body must contain valid JSON."
-            });
+            return new BadRequestObjectResult(new ErrorResponse(
+                ErrorCode: "INVALID_JSON",
+                Message: "The request body must contain valid JSON."));
         }
 
         if (reservationRequest is null)
         {
-            return new BadRequestObjectResult(new
-            {
-                errorCode = "MISSING_BODY",
-                message = "A request body is required."
-            });
+            return new BadRequestObjectResult(new ErrorResponse(
+                ErrorCode: "MISSING_BODY",
+                Message: "A request body is required."));
         }
 
         if (string.IsNullOrWhiteSpace(reservationRequest.OrderId) ||
@@ -86,6 +82,8 @@ public sealed class ReserveInventory
 
         return result.Success
             ? new OkObjectResult(result)
-            : new ConflictObjectResult(result);
+            : new ConflictObjectResult(new ErrorResponse(
+                ErrorCode: result.ErrorCode ?? "OUT_OF_STOCK",
+                Message: result.Message ?? "There is not enough inventory to complete the reservation."));
     }
 }
