@@ -63,12 +63,10 @@ public sealed class ProcessPlaceOrder
             command.CustomerId);
 
         await _inventoryService.ReserveAsync(
-            new ReserveInventoryRequest
-            {
-                OrderId = command.OrderId,
-                ProductId = command.ProductId,
-                Quantity = command.Quantity
-            },
+            new ReserveInventoryRequest(
+                command.OrderId,
+                command.ProductId,
+                command.Quantity),
             cancellationToken);
 
         _logger.LogInformation(
@@ -76,12 +74,10 @@ public sealed class ProcessPlaceOrder
             command.OrderId);
 
         await _paymentService.AuthorizeAsync(
-            new AuthorizePaymentRequest
-            {
-                OrderId = command.OrderId,
-                PaymentMethodId = command.PaymentMethodId,
-                Amount = command.Amount
-            },
+            new AuthorizePaymentRequest(
+                command.OrderId,
+                command.PaymentMethodId,
+                command.Amount),
             cancellationToken);
 
         _logger.LogInformation(
