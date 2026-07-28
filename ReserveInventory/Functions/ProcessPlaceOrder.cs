@@ -11,15 +11,18 @@ public sealed class ProcessPlaceOrder
     private readonly IInventoryService _inventoryService;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<ProcessPlaceOrder> _logger;
+    private readonly IOrderProcessingStore _orderStore;
 
     public ProcessPlaceOrder(
         IInventoryService inventoryService,
         IPaymentService paymentService,
-        ILogger<ProcessPlaceOrder> logger)
+        ILogger<ProcessPlaceOrder> logger,
+        IOrderProcessingStore orderStore)
     {
         _inventoryService = inventoryService;
         _paymentService = paymentService;
         _logger = logger;
+        _orderStore = orderStore;
     }
 
     [Function(nameof(ProcessPlaceOrder))]
@@ -62,32 +65,89 @@ public sealed class ProcessPlaceOrder
             command.OrderId,
             command.CustomerId);
 
-        await _inventoryService.ReserveAsync(
-            new ReserveInventoryRequest(
-                command.OrderId,
-                command.ProductId,
-                command.Quantity),
-            cancellationToken);
-
-        _logger.LogInformation(
-            "Inventory reserved for order {OrderId}",
-            command.OrderId);
-
-        await _paymentService.AuthorizeAsync(
-            new AuthorizePaymentRequest(
-                command.OrderId,
-                command.PaymentMethodId,
-                command.Amount),
-            cancellationToken);
-
-        _logger.LogInformation(
-            "Payment authorized for order {OrderId}. Amount: {Amount}",
+        var state = await _orderStore.GetOrCreateAsync(
             command.OrderId,
-            command.Amount);
+            cancellationToken);
 
-        _logger.LogInformation(
-            "Order {OrderId} processed successfully",
-            command.OrderId);
+        if (state.OrderStatus == "Completed")
+        {
+            _logger.LogInformation(
+                "Order {OrderId} was already completed. Skipping.",
+                command.OrderId);
+
+            return;
+        }
+
+        if (state.InventoryStatus != "Completed")
+        {
+            var inventoryResult = await _inventoryService.ReserveAsync(
+                new ReserveInventoryRequest(
+                    command.OrderId,
+                    command.ProductId,
+                    command.Quantity),
+                cancellationToken);
+
+            if (!inventoryResult.Success)
+            {
+                throw new InvalidOperationException(
+                    $"Inventory failed: {inventoryResult.ErrorCode}");
+            }
+
+            await _orderStore.MarkInventoryReservedAsync(
+                state,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Inventory reserved for order {OrderId}",
+                command.OrderId);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Inventory was already reserved for order {OrderId}. Skipping.",
+                command.OrderId);
+        }
+
+        try
+        {
+            if (state.PaymentStatus != "Completed")
+            {
+                var paymentResult = await _paymentService.AuthorizeAsync(
+                        new AuthorizePaymentRequest(
+                            command.OrderId,
+                            command.PaymentMethodId,
+                            command.Amount),
+                        cancellationToken);
+
+                _logger.LogInformation(
+                    "Order {OrderId} processed successfully",
+                    command.OrderId);
+
+                if (!paymentResult.Success)
+                {
+                    throw new InvalidOperationException(
+                        $"Payment failed: {paymentResult.ErrorCode}");
+                }
+
+                await _orderStore.MarkPaymentAuthorizedAsync(
+                    state,
+                    cancellationToken);
+
+                _logger.LogInformation(
+                    "Payment authorized for order {OrderId}. Amount: {Amount}",
+                    command.OrderId,
+                    command.Amount);
+            }
+        }
+        catch (Exception exception)
+        {
+            await _orderStore.MarkPaymentFailedAsync(
+                state,
+                exception.Message,
+                cancellationToken);
+
+            throw;
+        }
     }
 
     private static void Validate(PlaceOrderCommand command)
