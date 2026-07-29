@@ -1,7 +1,7 @@
 
 # Contoso.Integration
 
-Contoso.Integration is a .NET 10 solution that contains integration components and functions used to communicate between Contoso systems and external services. The projects implement inventory reservation and release workflows, background jobs, and supporting libraries.
+Contoso.Integration is a .NET 10 solution that contains integration components and functions used to communicate between Contoso systems and external services using Azure ServiceBus, Durable Queues, Azure Logic Apps & Azure Functions. The projects implement inventory reservation and release workflows, background jobs, and supporting libraries.
 
 ## Prerequisites
 
