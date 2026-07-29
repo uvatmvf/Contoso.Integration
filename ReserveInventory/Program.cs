@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var builder = FunctionsApplication.CreateBuilder(args);
+
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IPaymentService, SimulatedPaymentService>();
@@ -51,6 +52,8 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<
     IOrderProcessingStore,
     TableOrderProcessingStore>();
+
+builder.Services.AddSingleton<IOrderEventPublisher, ServiceBusOrderEventPublisher>();
 
 builder.ConfigureFunctionsWebApplication();
 
