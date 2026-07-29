@@ -35,6 +35,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
             {
                 PartitionKey = PartitionKey,
                 RowKey = orderId,
+                ETag = ETag.All,
                 InventoryStatus = "NotStarted",
                 PaymentStatus = "NotStarted",
                 OrderStatus = "Processing"
