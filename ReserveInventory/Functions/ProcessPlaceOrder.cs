@@ -8,18 +8,18 @@ namespace Contoso.InventoryFunctions.Functions;
 
 public sealed class ProcessPlaceOrder
 {
-    private readonly IInventoryService _inventoryService;
+    private readonly IInventoryCommandPublisher _inventoryCommandPublisher;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<ProcessPlaceOrder> _logger;
     private readonly IOrderProcessingStore _orderStore;
 
     public ProcessPlaceOrder(
-        IInventoryService inventoryService,
+        IInventoryCommandPublisher inventoryService,
         IPaymentService paymentService,
         ILogger<ProcessPlaceOrder> logger,
         IOrderProcessingStore orderStore)
     {
-        _inventoryService = inventoryService;
+        _inventoryCommandPublisher = inventoryService;
         _paymentService = paymentService;
         _logger = logger;
         _orderStore = orderStore;
@@ -80,25 +80,17 @@ public sealed class ProcessPlaceOrder
 
         if (state.InventoryStatus != "Completed")
         {
-            var inventoryResult = await _inventoryService.ReserveAsync(
+            var operationId = $"{command.OrderId}:reserve-inventory";
+            await _inventoryCommandPublisher.PublishReserveInventoryAsync(
                 new ReserveInventoryRequest(
                     command.OrderId,
+                    operationId,
                     command.ProductId,
                     command.Quantity),
                 cancellationToken);
 
-            if (!inventoryResult.Success)
-            {
-                throw new InvalidOperationException(
-                    $"Inventory failed: {inventoryResult.ErrorCode}");
-            }
-
-            await _orderStore.MarkInventoryReservedAsync(
-                state,
-                cancellationToken);
-
             _logger.LogInformation(
-                "Inventory reserved for order {OrderId}",
+                "Reserve inventory command published for order {OrderId}",
                 command.OrderId);
         }
         else

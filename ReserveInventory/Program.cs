@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using Azure.Messaging.ServiceBus;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -11,7 +12,18 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IPaymentService, SimulatedPaymentService>();
+builder.Services.AddSingleton(sp =>
+{
+    var configuration =
+        sp.GetRequiredService<IConfiguration>();
 
+    return new ServiceBusClient(
+        configuration["ServiceBusConnection"]);
+});
+
+builder.Services.AddSingleton<
+    IInventoryCommandPublisher,
+    ServiceBusInventoryCommandPublisher>();
 
 builder.Services.AddSingleton(sp =>
 {
