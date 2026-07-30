@@ -57,6 +57,32 @@ Note: Project folders and names may vary. Use the Solution Explorer in Visual St
 ✅ Topic subscription
 
 ✅ Function subscribing to an event
+### Flow
+HTTP Logic App
+      │
+      ▼
+Service Bus (place-order)
+      │
+      ▼
+ProcessPlaceOrder
+    │
+    ├── Create order state
+    └── Publish ReserveInventory
+              │
+              ▼
+ReserveInventory
+    │
+    ├── Reserve stock
+    ├── Update state
+    └── Publish InventoryReserved
+              │
+              ▼
+AuthorizePayment
+    │
+    ├── Load order state
+    ├── Authorize payment
+    ├── Update state
+    └── (next) Publish PaymentAuthorized
 
 ## Building and testing
 
