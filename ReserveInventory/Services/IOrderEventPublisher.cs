@@ -7,4 +7,8 @@ public interface IOrderEventPublisher
     Task PublishInventoryReservedAsync(
         InventoryReservedEvent inventoryReserved,
         CancellationToken cancellationToken);
+
+    Task PublishPaymentAuthorizedAsync(
+        PaymentAuthorizedEvent paymentAuthorized,
+        CancellationToken cancellationToken);
 }

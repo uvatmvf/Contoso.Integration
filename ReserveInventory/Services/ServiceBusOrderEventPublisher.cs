@@ -38,4 +38,24 @@ public sealed class ServiceBusOrderEventPublisher : IOrderEventPublisher
 
         await _sender.SendMessageAsync(message, cancellationToken);
     }
+
+    public async Task PublishPaymentAuthorizedAsync(
+    PaymentAuthorizedEvent paymentAuthorized,
+    CancellationToken cancellationToken)
+    {
+        var message = new ServiceBusMessage(
+            BinaryData.FromObjectAsJson(paymentAuthorized))
+        {
+            MessageId = $"{paymentAuthorized.OperationId}:completed",
+            CorrelationId = paymentAuthorized.OrderId,
+            Subject = "PaymentAuthorized",
+            ContentType = "application/json"
+        };
+
+        message.ApplicationProperties["EventType"] = "PaymentAuthorized";
+        message.ApplicationProperties["EventVersion"] = 1;
+
+        await _sender.SendMessageAsync(message, cancellationToken);
+    }
+
 }
