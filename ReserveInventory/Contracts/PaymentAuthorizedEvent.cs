@@ -5,4 +5,4 @@ public sealed record PaymentAuthorizedEvent(
     string OperationId,
     decimal Amount,
     string Currency,
-    DateTimeOffset AuthorizedAt);
+    DateTimeOffset AuthorizedAt) : IOrderEvent;

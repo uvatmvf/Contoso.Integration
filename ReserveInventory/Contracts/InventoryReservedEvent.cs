@@ -5,4 +5,4 @@ public sealed record InventoryReservedEvent(
     string OperationId,
     string ProductId,
     int Quantity,
-    DateTimeOffset OccurredAtUtc);
+    DateTimeOffset OccurredAtUtc) : IOrderEvent;
