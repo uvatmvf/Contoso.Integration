@@ -1,3 +1,4 @@
+using Azure.Messaging.ServiceBus;
 using Contoso.InventoryFunctions.Contracts;
 using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker;
@@ -24,28 +25,44 @@ public sealed class ReserveInventory
     [Function(nameof(ReserveInventory))]
     public async Task RunAsync(
         [ServiceBusTrigger(
-            "reserve-inventory",
-            Connection = "ServiceBusConnection")]
-        ReserveInventoryRequest request,
+        "reserve-inventory",
+        Connection = "ServiceBusConnection")]
+    ServiceBusReceivedMessage message,
         CancellationToken cancellationToken)
     {
-        await _inventoryService.ReserveAsync(
-            request,
-            cancellationToken);
+        var request = message.Body.ToObjectFromJson<ReserveInventoryRequest>()
+            ?? throw new InvalidOperationException(
+                "ReserveInventoryRequest was null.");
 
-        var inventoryReserved = new InventoryReservedEvent(
-            request.OrderId,
-            request.OperationId,
-            request.ProductId,
-            request.Quantity,
-            DateTimeOffset.UtcNow);
+        using (_logger.BeginScope(new Dictionary<string, object>
+        {
+            ["OrderId"] = request.OrderId,
+            ["CorrelationId"] = message.CorrelationId,
+            ["MessageId"] = message.MessageId,
+            ["OperationId"] = request.OperationId,
+            ["DeliveryCount"] = message.DeliveryCount
+        }))
+        {
+            _logger.LogInformation(
+                "Received reserve inventory command.");
 
-        await _eventPublisher.PublishInventoryReservedAsync(
-            inventoryReserved,
-            cancellationToken);
+            await _inventoryService.ReserveAsync(
+                request,
+                cancellationToken);
 
-        _logger.LogInformation(
-            "Inventory reserved event published for order {OrderId}",
-            request.OrderId);
+            var inventoryReserved = new InventoryReservedEvent(
+                request.OrderId,
+                request.OperationId,
+                request.ProductId,
+                request.Quantity,
+                DateTimeOffset.UtcNow);
+
+            await _eventPublisher.PublishInventoryReservedAsync(
+                inventoryReserved,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Published InventoryReserved event.");
+        }
     }
 }

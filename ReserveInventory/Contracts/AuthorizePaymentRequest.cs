@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Contoso.InventoryFunctions.Contracts;
 
-namespace Contoso.InventoryFunctions.Contracts
-{
-    public sealed record AuthorizePaymentRequest(
-        string OrderId,
-        string PaymentMethodId,
-        decimal Amount);
-}
+public sealed record AuthorizePaymentRequest(
+    string OrderId,
+    string OperationId,
+    string PaymentMethodId,
+    decimal Amount,
+    string Currency);
