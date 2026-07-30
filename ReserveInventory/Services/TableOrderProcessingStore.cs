@@ -29,7 +29,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
 
         var entity = new OrderProcessingEntity
         {
-            PartitionKey = "Order",
+            PartitionKey = PartitionKey,
             RowKey = command.OrderId,
             ETag = ETag.All,
             InventoryStatus = "NotStarted",
@@ -53,7 +53,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
     {
         var response =
             await _tableClient.GetEntityIfExistsAsync<OrderProcessingEntity>(
-                partitionKey: "orders",
+                partitionKey: PartitionKey,
                 rowKey: orderId,
                 cancellationToken: cancellationToken);
 
@@ -103,7 +103,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         var response = await _tableClient.UpdateEntityAsync(
             entity,
             entity.ETag,
-            TableUpdateMode.Replace,
+            TableUpdateMode.Merge,
             cancellationToken);
 
         entity.ETag = response.Headers.ETag ?? entity.ETag;

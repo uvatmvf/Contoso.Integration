@@ -3,7 +3,6 @@ using Contoso.InventoryFunctions.Contracts;
 using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace Contoso.InventoryFunctions.Functions;
 
