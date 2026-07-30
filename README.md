@@ -36,6 +36,28 @@ Contoso.Integration is a .NET 10 solution that contains integration components a
 
 Note: Project folders and names may vary. Use the Solution Explorer in Visual Studio to inspect all projects.
 
+### Architecture
+
+✅ HTTP entry point (Logic App)
+
+✅ Durable command queue
+
+✅ Function triggered from Service Bus
+
+✅ Azure Table state store
+
+✅ Idempotent operations
+
+✅ Command publisher abstraction
+
+✅ Service Bus Topic
+
+✅ Domain event publisher
+
+✅ Topic subscription
+
+✅ Function subscribing to an event
+
 ## Building and testing
 
 - Build the entire solution:
