@@ -9,19 +9,16 @@ namespace Contoso.InventoryFunctions.Functions;
 
 public sealed class ProcessPlaceOrder
 {
-    private readonly IInventoryCommandPublisher _inventoryCommandPublisher;
-    private readonly IPaymentService _paymentService;
+    private readonly IInventoryCommandPublisher _inventoryCommandPublisher;    
     private readonly ILogger<ProcessPlaceOrder> _logger;
     private readonly IOrderProcessingStore _orderStore;
 
     public ProcessPlaceOrder(
         IInventoryCommandPublisher inventoryService,
-        IPaymentService paymentService,
         ILogger<ProcessPlaceOrder> logger,
         IOrderProcessingStore orderStore)
     {
-        _inventoryCommandPublisher = inventoryService;
-        _paymentService = paymentService;
+        _inventoryCommandPublisher = inventoryService;        
         _logger = logger;
         _orderStore = orderStore;
     }
