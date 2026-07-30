@@ -1,68 +1,105 @@
-﻿using Contoso.InventoryFunctions.Contracts;
+﻿using Azure.Messaging.ServiceBus;
+using Contoso.InventoryFunctions.Contracts;
 using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Contoso.InventoryFunctions.Functions;
 
 public sealed class AuthorizePayment
 {
     private readonly IPaymentService _paymentService;
+    private readonly IOrderProcessingStore _orderStore;
     private readonly ILogger<AuthorizePayment> _logger;
 
     public AuthorizePayment(
         IPaymentService paymentService,
+        IOrderProcessingStore orderStore,
         ILogger<AuthorizePayment> logger)
     {
         _paymentService = paymentService;
+        _orderStore = orderStore;
         _logger = logger;
     }
 
     [Function(nameof(AuthorizePayment))]
     public async Task RunAsync(
-        [ServiceBusTrigger(
+    [ServiceBusTrigger(
         topicName: "order-events",
         subscriptionName: "authorize-payment",
         Connection = "ServiceBusConnection")]
-    InventoryReservedEvent inventoryReserved,
-        CancellationToken cancellationToken)
+    ServiceBusReceivedMessage message,
+    CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(inventoryReserved);
+        var inventoryReserved =
+            message.Body.ToObjectFromJson<InventoryReservedEvent>()
+            ?? throw new InvalidOperationException(
+                "InventoryReserved event body was empty.");
 
         var paymentOperationId =
             $"{inventoryReserved.OrderId}:authorize-payment";
 
+        using var logScope = _logger.BeginScope(
+            new Dictionary<string, object>
+            {
+                ["OrderId"] = inventoryReserved.OrderId,
+                ["CorrelationId"] =
+                    message.CorrelationId ?? inventoryReserved.OrderId,
+                ["MessageId"] = message.MessageId,
+                ["OperationId"] = paymentOperationId,
+                ["InventoryOperationId"] =
+                    inventoryReserved.OperationId,
+                ["DeliveryCount"] = message.DeliveryCount
+            });
+
         _logger.LogInformation(
-            "Authorizing payment for order {OrderId}. " +
-            "Inventory operation {InventoryOperationId}; " +
-            "payment operation {PaymentOperationId}.",
+            "Received {Subject} event.",
+            message.Subject);
+
+        var order = await _orderStore.GetAsync(
             inventoryReserved.OrderId,
-            inventoryReserved.OperationId,
-            paymentOperationId);
+            cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Order {inventoryReserved.OrderId} was not found.");
 
-        try
+        if (order.PaymentStatus == "Completed")
         {
-            var request = new AuthorizePaymentRequest(
-                inventoryReserved.OrderId,
-                paymentOperationId,
-                inventoryReserved.Quantity);
+            _logger.LogInformation(
+                "Payment was already authorized. Skipping.");
 
-            await _paymentService.AuthorizeAsync(
-                request,
+            return;
+        }
+
+        var paymentRequest = new AuthorizePaymentRequest(
+            inventoryReserved.OrderId,
+            paymentOperationId,
+            order.PaymentMethodId,
+            order.Amount,
+            order.Currency);
+
+        var result = await _paymentService.AuthorizeAsync(
+            paymentRequest,
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            await _orderStore.MarkPaymentFailedAsync(
+                order,
+                result.ErrorCode ?? "Payment authorization failed.",
                 cancellationToken);
 
-            _logger.LogInformation(
-                "Payment authorized for order {OrderId}",
-                inventoryReserved.OrderId);
+            throw new InvalidOperationException(
+                $"Payment failed: {result.ErrorCode}");
         }
-        catch (Exception exception)
-        {
-            _logger.LogError(
-                exception,
-                "Payment authorization failed for order {OrderId}",
-                inventoryReserved.OrderId);
 
-            throw;
-        }
+        await _orderStore.MarkPaymentAuthorizedAsync(
+            order,
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Payment authorization completed for {Amount} {Currency}.",
+            order.Amount,
+            order.Currency);
     }
 }

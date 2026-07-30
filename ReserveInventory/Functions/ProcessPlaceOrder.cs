@@ -1,4 +1,5 @@
-﻿using Contoso.InventoryFunctions.Contracts;
+﻿using Azure.Messaging.ServiceBus;
+using Contoso.InventoryFunctions.Contracts;
 using Contoso.InventoryFunctions.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
@@ -25,121 +26,79 @@ public sealed class ProcessPlaceOrder
         _orderStore = orderStore;
     }
 
+
     [Function(nameof(ProcessPlaceOrder))]
     public async Task RunAsync(
         [ServiceBusTrigger(
             "place-order",
             Connection = "ServiceBusConnection")]
-        string messageBody,
+        ServiceBusReceivedMessage message,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Received place-order message: {MessageBody}",
-            messageBody);
-
-        var command = JsonSerializer.Deserialize<PlaceOrderCommand>(
-            messageBody,
+        var command = message.Body.ToObjectFromJson<PlaceOrderCommand>(
             new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
-            });
-
-        if (command is null)
-        {
-            throw new InvalidOperationException(
+            })
+            ?? throw new InvalidOperationException(
                 "The place-order message could not be deserialized.");
-        }
 
         Validate(command);
+
+        var correlationId =
+            string.IsNullOrWhiteSpace(message.CorrelationId)
+                ? command.OrderId
+                : message.CorrelationId;
 
         using var logScope = _logger.BeginScope(
             new Dictionary<string, object>
             {
                 ["OrderId"] = command.OrderId,
                 ["CustomerId"] = command.CustomerId,
-                ["ProductId"] = command.ProductId
+                ["ProductId"] = command.ProductId,
+                ["CorrelationId"] = correlationId,
+                ["MessageId"] = message.MessageId,
+                ["Subject"] = message.Subject ?? "PlaceOrder",
+                ["DeliveryCount"] = message.DeliveryCount
             });
 
         _logger.LogInformation(
-            "Processing order {OrderId} for customer {CustomerId}",
-            command.OrderId,
-            command.CustomerId);
+            "Received place-order command.");
 
         var state = await _orderStore.GetOrCreateAsync(
-            command.OrderId,
+            command,
             cancellationToken);
 
         if (state.OrderStatus == "Completed")
         {
             _logger.LogInformation(
-                "Order {OrderId} was already completed. Skipping.",
-                command.OrderId);
+                "Order was already completed. Skipping.");
 
             return;
         }
 
-        if (state.InventoryStatus != "Completed")
-        {
-            var operationId = $"{command.OrderId}:reserve-inventory";
-            await _inventoryCommandPublisher.PublishReserveInventoryAsync(
-                new ReserveInventoryRequest(
-                    command.OrderId,
-                    operationId,
-                    command.ProductId,
-                    command.Quantity),
-                cancellationToken);
-
-            _logger.LogInformation(
-                "Reserve inventory command published for order {OrderId}",
-                command.OrderId);
-        }
-        else
+        if (state.InventoryStatus == "Completed")
         {
             _logger.LogInformation(
-                "Inventory was already reserved for order {OrderId}. Skipping.",
-                command.OrderId);
+                "Inventory was already reserved. Skipping command publication.");
+
+            return;
         }
 
-        try
-        {
-            if (state.PaymentStatus != "Completed")
-            {
-                var paymentResult = await _paymentService.AuthorizeAsync(
-                        new AuthorizePaymentRequest(
-                            command.OrderId,
-                            command.PaymentMethodId,
-                            command.Amount),
-                        cancellationToken);
+        var operationId =
+            $"{command.OrderId}:reserve-inventory";
 
-                _logger.LogInformation(
-                    "Order {OrderId} processed successfully",
-                    command.OrderId);
+        await _inventoryCommandPublisher.PublishReserveInventoryAsync(
+            new ReserveInventoryRequest(
+                command.OrderId,
+                operationId,
+                command.ProductId,
+                command.Quantity),
+            cancellationToken);
 
-                if (!paymentResult.Success)
-                {
-                    throw new InvalidOperationException(
-                        $"Payment failed: {paymentResult.ErrorCode}");
-                }
-
-                await _orderStore.MarkPaymentAuthorizedAsync(
-                    state,
-                    cancellationToken);
-
-                _logger.LogInformation(
-                    "Payment authorized for order {OrderId}. Amount: {Amount}",
-                    command.OrderId,
-                    command.Amount);
-            }
-        }
-        catch (Exception exception)
-        {
-            await _orderStore.MarkPaymentFailedAsync(
-                state,
-                exception.Message,
-                cancellationToken);
-
-            throw;
-        }
+        _logger.LogInformation(
+            "Published reserve-inventory command with operation {OperationId}.",
+            operationId);
     }
 
     private static void Validate(PlaceOrderCommand command)

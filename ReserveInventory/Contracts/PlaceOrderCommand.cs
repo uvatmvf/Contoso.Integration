@@ -7,5 +7,6 @@
     string ProductId,
     int Quantity,
     string PaymentMethodId,
-    decimal Amount);
+    decimal Amount,
+    string Currency);
 }

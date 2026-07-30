@@ -15,53 +15,51 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
     }
 
     public async Task<OrderProcessingEntity> GetOrCreateAsync(
-        string orderId,
+        PlaceOrderCommand command,
         CancellationToken cancellationToken)
     {
-        try
+        var existing = await GetAsync(
+        command.OrderId,
+        cancellationToken);
+
+        if (existing is not null)
         {
-            var response =
-                await _tableClient.GetEntityAsync<OrderProcessingEntity>(
-                    PartitionKey,
-                    orderId,
-                    cancellationToken: cancellationToken);
-
-            return response.Value;
+            return existing;
         }
-        catch (RequestFailedException exception)
-            when (exception.Status == 404)
+
+        var entity = new OrderProcessingEntity
         {
-            var entity = new OrderProcessingEntity
-            {
-                PartitionKey = PartitionKey,
-                RowKey = orderId,
-                ETag = ETag.All,
-                InventoryStatus = "NotStarted",
-                PaymentStatus = "NotStarted",
-                OrderStatus = "Processing"
-            };
+            PartitionKey = "Order",
+            RowKey = command.OrderId,
+            ETag = ETag.All,
+            InventoryStatus = "NotStarted",
+            PaymentStatus = "NotStarted",
+            OrderStatus = "Pending",
+            PaymentMethodId = command.PaymentMethodId,
+            Amount = command.Amount,
+            Currency = command.Currency
+        };
 
-            try
-            {
-                await _tableClient.AddEntityAsync(
-                    entity,
-                    cancellationToken);
+        await _tableClient.AddEntityAsync(
+            entity,
+            cancellationToken);
 
-                return entity;
-            }
-            catch (RequestFailedException rfException)
-                when (rfException.Status == 409)
-            {
-                // Another Function instance created it first.
-                var response =
-                    await _tableClient.GetEntityAsync<OrderProcessingEntity>(
-                        PartitionKey,
-                        orderId,
-                        cancellationToken: cancellationToken);
+        return entity;
+    }
 
-                return response.Value;
-            }
-        }
+    public async Task<OrderProcessingEntity?> GetAsync(
+    string orderId,
+    CancellationToken cancellationToken)
+    {
+        var response =
+            await _tableClient.GetEntityIfExistsAsync<OrderProcessingEntity>(
+                partitionKey: "orders",
+                rowKey: orderId,
+                cancellationToken: cancellationToken);
+
+        return response.HasValue
+            ? response.Value
+            : null;
     }
 
     public async Task MarkInventoryReservedAsync(
@@ -110,4 +108,5 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
 
         entity.ETag = response.Headers.ETag ?? entity.ETag;
     }
+
 }
