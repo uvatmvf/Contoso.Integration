@@ -34,6 +34,12 @@ public sealed class AuthorizePayment
     ServiceBusReceivedMessage message,
     CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "AuthorizePayment triggered. MessageId={MessageId}, Subject={Subject}, Body={Body}",
+            message.MessageId,
+            message.Subject,
+            message.Body.ToString());
+
         var inventoryReserved =
             message.Body.ToObjectFromJson<InventoryReservedEvent>()
             ?? throw new InvalidOperationException(
