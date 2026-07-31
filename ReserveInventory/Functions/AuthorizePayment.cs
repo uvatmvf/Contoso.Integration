@@ -10,15 +10,18 @@ public sealed class AuthorizePayment
 {
     private readonly IPaymentService _paymentService;
     private readonly IOrderProcessingStore _orderStore;
+    private readonly IOrderEventPublisher _eventPublisher;
     private readonly ILogger<AuthorizePayment> _logger;
 
     public AuthorizePayment(
         IPaymentService paymentService,
         IOrderProcessingStore orderStore,
+        IOrderEventPublisher eventPublisher,
         ILogger<AuthorizePayment> logger)
     {
         _paymentService = paymentService;
         _orderStore = orderStore;
+        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -96,9 +99,22 @@ public sealed class AuthorizePayment
             order,
             cancellationToken);
 
+        var paymentAuthorizedEvent = new PaymentAuthorizedEvent(
+            inventoryReserved.OrderId,
+            paymentOperationId,
+            order.Amount,
+            order.Currency,
+            DateTimeOffset.UtcNow);
+
+        await _eventPublisher.PublishPaymentAuthorizedAsync(
+            paymentAuthorizedEvent,
+            cancellationToken);
+
         _logger.LogInformation(
             "Payment authorization completed for {Amount} {Currency}.",
             order.Amount,
             order.Currency);
+
+
     }
 }
