@@ -6,7 +6,8 @@ using Contoso.InventoryFunctions.Services;
 public sealed class TableOrderProcessingStore : IOrderProcessingStore
 {
     private const string PartitionKey = "Order";
-
+    private const string OrderCompleted = "Completed";
+    private const string OrderProcessing = "Processing";
     private readonly TableClient _tableClient;
 
     public TableOrderProcessingStore(TableClient tableClient)
@@ -14,7 +15,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         _tableClient = tableClient;
     }
 
-    public async Task<OrderProcessingEntity> GetOrCreateAsync(
+    public async Task<GetOrCreateOrderResult> GetOrCreateAsync(
         PlaceOrderCommand command,
         CancellationToken cancellationToken)
     {
@@ -24,7 +25,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
 
         if (existing is not null)
         {
-            return existing;
+            return new GetOrCreateOrderResult(existing, false);
         }
 
         var entity = new OrderProcessingEntity
@@ -44,7 +45,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
             entity,
             cancellationToken);
 
-        return entity;
+        return new GetOrCreateOrderResult(entity, true);
     }
 
     public async Task<OrderProcessingEntity?> GetAsync(
@@ -66,9 +67,19 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         CancellationToken cancellationToken)
     {
-        entity.InventoryStatus = "Completed";
+        entity.InventoryStatus = OrderCompleted;
         entity.InventoryReservedAt = DateTimeOffset.UtcNow;
 
+        await UpdateAsync(entity, cancellationToken);
+    }
+
+    public async Task MarkOrderCompletedAsync(
+    OrderProcessingEntity entity,
+    CancellationToken cancellationToken)
+    {
+        entity.OrderStatus = "Completed";
+        entity.LastError = null;
+        entity.OrderCompletedAt = DateTimeOffset.UtcNow;
         await UpdateAsync(entity, cancellationToken);
     }
 
@@ -76,9 +87,9 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         CancellationToken cancellationToken)
     {
-        entity.PaymentStatus = "Completed";
+        entity.PaymentStatus = OrderCompleted;
         entity.PaymentAuthorizedAt = DateTimeOffset.UtcNow;
-        entity.OrderStatus = "Completed";
+        entity.OrderStatus = OrderProcessing;
         entity.LastError = null;
 
         await UpdateAsync(entity, cancellationToken);
@@ -88,9 +99,10 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         string error,
         CancellationToken cancellationToken)
-    {
+    {       
         entity.PaymentStatus = "Failed";
-        entity.OrderStatus = "Processing";
+        entity.PaymentAuthorizedAt = DateTimeOffset.UtcNow;
+        entity.OrderStatus = OrderProcessing;
         entity.LastError = error;
 
         await UpdateAsync(entity, cancellationToken);

@@ -3,7 +3,7 @@ namespace Contoso.InventoryFunctions.Services;
 
 public interface IOrderProcessingStore
 {
-    Task<OrderProcessingEntity> GetOrCreateAsync(
+    Task<GetOrCreateOrderResult> GetOrCreateAsync(
         PlaceOrderCommand command,
         CancellationToken cancellationToken);
 
@@ -11,6 +11,10 @@ public interface IOrderProcessingStore
         , CancellationToken cancellationToken);
 
     Task MarkInventoryReservedAsync(
+        OrderProcessingEntity entity,
+        CancellationToken cancellationToken);
+
+    Task MarkOrderCompletedAsync(
         OrderProcessingEntity entity,
         CancellationToken cancellationToken);
 

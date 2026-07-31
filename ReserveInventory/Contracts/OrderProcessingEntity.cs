@@ -30,4 +30,6 @@ public sealed class OrderProcessingEntity : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
 
     public ETag ETag { get; set; }
+    public DateTimeOffset? OrderCompletedAt { get; internal set; }
+
 }
