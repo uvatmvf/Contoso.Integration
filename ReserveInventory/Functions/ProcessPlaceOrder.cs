@@ -66,7 +66,7 @@ public sealed class ProcessPlaceOrder
             command,
             cancellationToken);
 
-        if (state.OrderStatus == "Completed")
+        if (state.Entity.OrderStatus == "Completed")
         {
             _logger.LogInformation(
                 "Order was already completed. Skipping.");
@@ -74,10 +74,18 @@ public sealed class ProcessPlaceOrder
             return;
         }
 
-        if (state.InventoryStatus == "Completed")
+        if (state.Entity.InventoryStatus == "Completed")
         {
             _logger.LogInformation(
                 "Inventory was already reserved. Skipping command publication.");
+
+            return;
+        }
+
+        if (!state.Created)
+        {
+            _logger.LogInformation(
+                "Order already exists. Skipping duplicate PlaceOrder publication.");
 
             return;
         }

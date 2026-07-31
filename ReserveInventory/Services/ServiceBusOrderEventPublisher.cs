@@ -9,7 +9,7 @@ public sealed class ServiceBusOrderEventPublisher : IOrderEventPublisher
     private readonly ILogger _logger;
 
     public ServiceBusOrderEventPublisher(ServiceBusClient client
-        , ILogger logger)
+        , ILogger<ServiceBusOrderEventPublisher> logger)
     {
         _sender = client.CreateSender("order-events");
         _logger = logger;
