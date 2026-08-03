@@ -1,12 +1,10 @@
 <Solution>
   <Folder Name="/docs/">
-    <File Path="ReserveInventory/0001-separate-application-and-infrastructure-repositories.md" />
-    <File Path="ReserveInventory/0002-managed-identity-and-rbac.md" />
-    <File Path="ReserveInventory/0003-commands-on-queues-events-on-topics.md" />
-    <File Path="ReserveInventory/0004-build-once-promote-same-artifact.md" />
-    <File Path="ReserveInventory/0005-terraform-modules-and-ownership-boundaries.md" />
-    <File Path="ReserveInventory/README(1).md" />
-    <File Path="ReserveInventory/README(2).md" />
+    <File Path="ReserveInventory/docs/0001-separate-application-and-infrastructure-repositories.md" />
+    <File Path="ReserveInventory/docs/0002-managed-identity-and-rbac.md" />
+    <File Path="ReserveInventory/docs/0003-commands-on-queues-events-on-topics.md" />
+    <File Path="ReserveInventory/docs/0004-build-once-promote-same-artifact.md" />
+    <File Path="ReserveInventory/docs/0005-terraform-modules-and-ownership-boundaries.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="ReserveInventory/Contoso.InventoryFunctions.csproj" />
