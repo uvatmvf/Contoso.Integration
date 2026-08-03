@@ -49,8 +49,6 @@ builder.Services.AddSingleton(sp =>
         "OrderProcessing",
         new DefaultAzureCredential());
 
-    tableClient.CreateIfNotExists();
-
     return tableClient;
 });
 
