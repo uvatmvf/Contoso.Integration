@@ -35,18 +35,19 @@ builder.Services.AddSingleton(sp =>
     var configuration =
         sp.GetRequiredService<IConfiguration>();
 
-    var connectionString =
-        configuration["OrderStateStorage"];
+    var tableEndpoint =
+        configuration["OrderStateStorage:tableEndpoint"];
 
-    if (string.IsNullOrWhiteSpace(connectionString))
+    if (string.IsNullOrWhiteSpace(tableEndpoint))
     {
         throw new InvalidOperationException(
-            "OrderStateStorage is not configured.");
+            "OrderStateStorage:tableEndpoint is not configured.");
     }
 
     var tableClient = new TableClient(
-        connectionString,
-        "OrderProcessing");
+        new Uri(tableEndpoint),
+        "OrderProcessing",
+        new DefaultAzureCredential());
 
     tableClient.CreateIfNotExists();
 
