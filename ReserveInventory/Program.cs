@@ -21,6 +21,12 @@ builder.Services.AddSingleton(sp =>
     var fullyQualifiedNamespace =
         configuration["ServiceBusConnection:fullyQualifiedNamespace"];
 
+    if (string.IsNullOrWhiteSpace(fullyQualifiedNamespace))
+    {
+        throw new InvalidOperationException(
+            "ServiceBusConnection:fullyQualifiedNamespace is not configured.");
+    }
+
     return new ServiceBusClient(
         fullyQualifiedNamespace,
         new DefaultAzureCredential());
