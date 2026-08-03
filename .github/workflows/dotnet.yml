@@ -1,28 +1,165 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
-name: .NET
+name: Build Function App
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    branches:
+      - main
 
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  FUNCTION_PROJECT: ReserveInventory/Contoso.InventoryFunctions.csproj
+  PUBLISH_DIRECTORY: ${{ github.workspace }}/publish/function-app
+  PACKAGE_PATH: ${{ github.workspace }}/artifacts/contoso-inventory-functions.zip
+  ARTIFACT_NAME: contoso-inventory-functions
+  
 jobs:
   build:
-
+    name: Build and package
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            **/packages.lock.json
+            **/*.csproj
+
+      - name: Restore
+        run: dotnet restore "${{ env.FUNCTION_PROJECT }}"
+
+      - name: Build
+        run: >
+          dotnet build "${{ env.FUNCTION_PROJECT }}"
+          --configuration Release
+          --no-restore
+
+      - name: Test
+        run: >
+          dotnet test
+          --configuration Release
+          --no-restore
+          --verbosity normal
+
+      - name: Publish Function App
+        run: >
+          dotnet publish "${{ env.FUNCTION_PROJECT }}"
+          --configuration Release
+          --no-build
+          --output "${{ env.PUBLISH_DIRECTORY }}"
+
+      - name: Verify deployment payload
+        shell: bash
+        run: |
+          test -f "${PUBLISH_DIRECTORY}/host.json"
+          test -f "${PUBLISH_DIRECTORY}/functions.metadata"
+          test -f "${PUBLISH_DIRECTORY}/worker.config.json"
+
+          echo "Function deployment payload:"
+          find "${PUBLISH_DIRECTORY}" -maxdepth 2 -type f | sort
+
+      - name: Create deployment package
+        shell: bash
+        run: |
+          mkdir -p "$(dirname "${PACKAGE_PATH}")"
+          cd "${PUBLISH_DIRECTORY}"
+          zip -r "${PACKAGE_PATH}" .
+
+      - name: Upload Function App package
+        uses: actions/upload-artifact@v7
+        with:
+          name: contoso-inventory-functions
+          path: ${{ env.PACKAGE_PATH }}
+          if-no-files-found: error
+          retention-days: 14
+  deploy-dev:
+    name: Deploy to dev
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: dev
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download Function App package
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: artifacts
+
+      - name: Log in to Azure using OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show deployment target
+        run: |
+          echo "Environment: dev"
+          echo "Function App: ${{ vars.AZURE_FUNCTION_APP_NAME }}"
+          echo "Resource Group: ${{ vars.AZURE_RESOURCE_GROUP }}"
+
+      - name: Deploy Function App to dev
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
+          package: artifacts/contoso-inventory-functions.zip
+          
+  deploy-stage:
+    name: Deploy to stage
+    if: github.event_name != 'pull_request'
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+
+    environment:
+      name: stage
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download Function App package
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: artifacts
+
+      - name: Log in to Azure using OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Show deployment target
+        run: |
+          echo "Environment: stage"
+          echo "Function App: ${{ vars.AZURE_FUNCTION_APP_NAME }}"
+          echo "Resource Group: ${{ vars.AZURE_RESOURCE_GROUP }}"
+
+      - name: Deploy Function App to stage
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
+          package: artifacts/contoso-inventory-functions.zip
