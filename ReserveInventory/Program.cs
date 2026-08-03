@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Contoso.InventoryFunctions.Services;
@@ -11,15 +12,24 @@ using Microsoft.Extensions.Hosting;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
-builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IPaymentService, SimulatedPaymentService>();
 builder.Services.AddSingleton(sp =>
 {
     var configuration =
         sp.GetRequiredService<IConfiguration>();
 
+    var fullyQualifiedNamespace =
+        configuration["ServiceBusConnection:fullyQualifiedNamespace"];
+
+    if (string.IsNullOrWhiteSpace(fullyQualifiedNamespace))
+    {
+        throw new InvalidOperationException(
+            "ServiceBusConnection:fullyQualifiedNamespace is not configured.");
+    }
+
     return new ServiceBusClient(
-        configuration["ServiceBusConnection"]);
+        fullyQualifiedNamespace,
+        new DefaultAzureCredential());
 });
 
 builder.Services.AddSingleton<
@@ -31,20 +41,19 @@ builder.Services.AddSingleton(sp =>
     var configuration =
         sp.GetRequiredService<IConfiguration>();
 
-    var connectionString =
-        configuration["OrderStateStorage"];
+    var tableEndpoint =
+        configuration["OrderStateStorage:tableEndpoint"];
 
-    if (string.IsNullOrWhiteSpace(connectionString))
+    if (string.IsNullOrWhiteSpace(tableEndpoint))
     {
         throw new InvalidOperationException(
-            "OrderStateStorage is not configured.");
+            "OrderStateStorage:tableEndpoint is not configured.");
     }
 
     var tableClient = new TableClient(
-        connectionString,
-        "OrderProcessing");
-
-    tableClient.CreateIfNotExists();
+        new Uri(tableEndpoint),
+        "OrderProcessing",
+        new DefaultAzureCredential());
 
     return tableClient;
 });
