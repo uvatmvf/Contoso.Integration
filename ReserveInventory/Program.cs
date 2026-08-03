@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Contoso.InventoryFunctions.Services;
@@ -11,15 +12,18 @@ using Microsoft.Extensions.Hosting;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
-builder.Services.AddSingleton<IInventoryService, InMemoryInventoryService>();
 builder.Services.AddSingleton<IPaymentService, SimulatedPaymentService>();
 builder.Services.AddSingleton(sp =>
 {
     var configuration =
         sp.GetRequiredService<IConfiguration>();
 
+    var fullyQualifiedNamespace =
+        configuration["ServiceBusConnection:fullyQualifiedNamespace"];
+
     return new ServiceBusClient(
-        configuration["ServiceBusConnection"]);
+        fullyQualifiedNamespace,
+        new DefaultAzureCredential());
 });
 
 builder.Services.AddSingleton<
