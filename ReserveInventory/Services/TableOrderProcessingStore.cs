@@ -8,6 +8,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
     private const string PartitionKey = "Order";
     private const string OrderCompleted = "Completed";
     private const string OrderProcessing = "Processing";
+    private const string InventoryReserved = "Reserved";
     private readonly TableClient _tableClient;
 
     public TableOrderProcessingStore(TableClient tableClient)
@@ -67,7 +68,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         CancellationToken cancellationToken)
     {
-        entity.InventoryStatus = OrderCompleted;
+        entity.InventoryStatus = InventoryReserved;
         entity.InventoryReservedAt = DateTimeOffset.UtcNow;
 
         await UpdateAsync(entity, cancellationToken);
