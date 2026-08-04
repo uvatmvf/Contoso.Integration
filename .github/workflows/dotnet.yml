@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
+          cache: false
 
       - name: Restore
         run: dotnet restore Contoso.Integration.slnx
