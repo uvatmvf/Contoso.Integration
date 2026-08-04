@@ -192,6 +192,15 @@ Use `local.settings.json` for local-only endpoint configuration. Do not commit s
 
 `DefaultAzureCredential` uses your local Azure developer identity. That identity must have the same data-plane roles required by the application.
 
+## Test Payment Methods
+
+| Payment Method | Result |
+|---------------|--------|
+| PAY-APPROVED | Payment succeeds |
+| PAY-DECLINED | Business decline |
+| PAY-ERROR | Provider exception |
+| anything else | Invalid payment method |
+
 ## Deployment environments
 
 ### Development

@@ -6,9 +6,9 @@ using Contoso.InventoryFunctions.Services;
 public sealed class TableOrderProcessingStore : IOrderProcessingStore
 {
     private const string PartitionKey = "Order";
-    private const string OrderCompleted = "Completed";
-    private const string OrderProcessing = "Processing";
-    private const string InventoryReserved = "Reserved";
+    //private const string OrderCompleted = "Completed";
+    //private const string OrderProcessing = "Processing";
+    //private const string InventoryReserved = "Reserved";
     private readonly TableClient _tableClient;
 
     public TableOrderProcessingStore(TableClient tableClient)
@@ -34,9 +34,9 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
             PartitionKey = PartitionKey,
             RowKey = command.OrderId,
             ETag = ETag.All,
-            InventoryStatus = "NotStarted",
-            PaymentStatus = "NotStarted",
-            OrderStatus = "Pending",
+            InventoryStatus = InventoryStatuses.NotStarted,
+            PaymentStatus = PaymentStatuses.NotStarted,
+            OrderStatus = OrderStatuses.Pending,
             PaymentMethodId = command.PaymentMethodId,
             Amount = command.Amount,
             Currency = command.Currency
@@ -68,7 +68,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         CancellationToken cancellationToken)
     {
-        entity.InventoryStatus = InventoryReserved;
+        entity.InventoryStatus = InventoryStatuses.Reserved;
         entity.InventoryReservedAt = DateTimeOffset.UtcNow;
 
         await UpdateAsync(entity, cancellationToken);
@@ -78,7 +78,7 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
     OrderProcessingEntity entity,
     CancellationToken cancellationToken)
     {
-        entity.OrderStatus = "Completed";
+        entity.OrderStatus = OrderStatuses.Completed;
         entity.LastError = null;
         entity.OrderCompletedAt = DateTimeOffset.UtcNow;
         await UpdateAsync(entity, cancellationToken);
@@ -88,9 +88,9 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         OrderProcessingEntity entity,
         CancellationToken cancellationToken)
     {
-        entity.PaymentStatus = OrderCompleted;
+        entity.PaymentStatus = PaymentStatuses.Completed;
         entity.PaymentAuthorizedAt = DateTimeOffset.UtcNow;
-        entity.OrderStatus = OrderProcessing;
+        entity.OrderStatus = OrderStatuses.Processing;
         entity.LastError = null;
 
         await UpdateAsync(entity, cancellationToken);
@@ -101,9 +101,9 @@ public sealed class TableOrderProcessingStore : IOrderProcessingStore
         string error,
         CancellationToken cancellationToken)
     {       
-        entity.PaymentStatus = "Failed";
+        entity.PaymentStatus = PaymentStatuses.Failed;
         entity.PaymentAuthorizedAt = DateTimeOffset.UtcNow;
-        entity.OrderStatus = OrderProcessing;
+        entity.OrderStatus = OrderStatuses.Processing;
         entity.LastError = error;
 
         await UpdateAsync(entity, cancellationToken);
