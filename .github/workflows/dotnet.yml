@@ -22,6 +22,30 @@ env:
   ARTIFACT_NAME: contoso-inventory-functions
   
 jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+
+      - name: Restore
+        run: dotnet restore Contoso.Integration.slnx
+
+      - name: Test
+        run: |
+          dotnet test Contoso.Integration.slnx \
+            --configuration Release \
+            --no-restore \
+            --verbosity normal
+
   build:
     name: Build and package
     runs-on: ubuntu-latest
