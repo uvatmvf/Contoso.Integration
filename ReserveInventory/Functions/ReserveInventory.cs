@@ -9,15 +9,18 @@ namespace Contoso.InventoryFunctions.Functions;
 public sealed class ReserveInventory
 {
     private readonly IInventoryService _inventoryService;
+    private readonly IOrderProcessingStore _orderProcessingStore;
     private readonly IOrderEventPublisher _eventPublisher;
     private readonly ILogger<ReserveInventory> _logger;
 
     public ReserveInventory(
         IInventoryService inventoryService,
+        IOrderProcessingStore orderProcessingStore,
         IOrderEventPublisher eventPublisher,
         ILogger<ReserveInventory> logger)
     {
         _inventoryService = inventoryService;
+        _orderProcessingStore = orderProcessingStore;
         _eventPublisher = eventPublisher;
         _logger = logger;
     }
@@ -56,6 +59,16 @@ public sealed class ReserveInventory
                 request.ProductId,
                 request.Quantity,
                 DateTimeOffset.UtcNow);
+
+            var order = await _orderProcessingStore.GetAsync(
+                request.OrderId,
+                cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"Order {request.OrderId} was not found.");
+
+            await _orderProcessingStore.MarkInventoryReservedAsync(
+                order,
+                cancellationToken);
 
             await _eventPublisher.PublishInventoryReservedAsync(
                 inventoryReserved,
