@@ -70,6 +70,12 @@ public sealed class AuthorizePayment
             cancellationToken)
             ?? throw new InvalidOperationException(
                 $"Order {inventoryReserved.OrderId} was not found.");
+        
+        _logger.LogInformation(
+            "Loaded order state before payment: InventoryStatus={InventoryStatus}, PaymentStatus={PaymentStatus}, ETag={ETag}.",
+            order.InventoryStatus,
+            order.PaymentStatus,
+            order.ETag);
 
         if (order.PaymentStatus == "Completed")
         {
@@ -96,6 +102,12 @@ public sealed class AuthorizePayment
                 order,
                 result.ErrorCode ?? "Payment authorization failed.",
                 cancellationToken);
+
+            _logger.LogInformation(
+                "Saving payment authorization: InventoryStatus={InventoryStatus}, PaymentStatus={PaymentStatus}, ETag={ETag}.",
+                order.InventoryStatus,
+                order.PaymentStatus,
+                order.ETag);
 
             throw new InvalidOperationException(
                 $"Payment failed: {result.ErrorCode}");

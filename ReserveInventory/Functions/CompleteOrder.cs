@@ -59,6 +59,12 @@ public sealed class CompleteOrder
             ?? throw new InvalidOperationException(
                 $"Order {paymentAuthorized.OrderId} was not found.");
 
+        _logger.LogInformation(
+            "Loaded order state before completion: InventoryStatus={InventoryStatus}, PaymentStatus={PaymentStatus}, ETag={ETag}.",
+            order.InventoryStatus,
+            order.PaymentStatus,
+            order.ETag);
+
         if (order.OrderStatus == "Completed")
         {
             _logger.LogInformation(
