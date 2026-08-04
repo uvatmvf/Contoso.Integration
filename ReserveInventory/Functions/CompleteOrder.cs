@@ -65,7 +65,7 @@ public sealed class CompleteOrder
             order.PaymentStatus,
             order.ETag);
 
-        if (order.OrderStatus == "Completed")
+        if (order.OrderStatus == OrderStatuses.Completed)
         {
             _logger.LogInformation(
                 "Order was already completed. Skipping.");
@@ -73,13 +73,19 @@ public sealed class CompleteOrder
             return;
         }
 
-        if (order.InventoryStatus != "Completed")
+        if (!string.Equals(
+            order.InventoryStatus,
+            InventoryStatuses.Reserved,
+            StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Order {paymentAuthorized.OrderId} cannot be completed because inventory status is {order.InventoryStatus}.");
         }
 
-        if (order.PaymentStatus != "Completed")
+        if (!string.Equals(
+            order.PaymentStatus,
+            PaymentStatuses.Completed,
+            StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Order {paymentAuthorized.OrderId} cannot be completed because payment status is {order.PaymentStatus}.");
@@ -90,6 +96,10 @@ public sealed class CompleteOrder
             cancellationToken);
 
         _logger.LogInformation(
-            "Order completed successfully.");
+            "Order {OrderId} marked completed. InventoryStatus={InventoryStatus}, PaymentStatus={PaymentStatus}, OrderStatus={OrderStatus}.",
+            order.RowKey,
+            order.InventoryStatus,
+            order.PaymentStatus,
+            order.OrderStatus);
     }
 }
