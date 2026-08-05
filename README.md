@@ -84,6 +84,8 @@ AuthorizePayment
     ├── Update state
     └── (next) Publish PaymentAuthorized
 
+[The Terraform infrastructure as code is defined in this repository.](https://github.com/uvatmvf/contoso-order-platform)
+
 ## Building and testing
 
 - Build the entire solution:
